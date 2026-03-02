@@ -1,0 +1,29 @@
+name: Sync CNU Meals Daily
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 05:30 KST
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run sync
+        env:
+          WORKER_URL: ${{ secrets.CF_WORKER_URL }}
+          SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
+          RUN_TYPE: scheduled
+        run: python scripts/sync_menu.py

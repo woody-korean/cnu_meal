@@ -1,0 +1,33 @@
+name: Sync CNU Meals Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: "Target date in YYYY-MM-DD (optional, defaults to KST today)"
+        required: false
+        type: string
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run manual sync
+        env:
+          WORKER_URL: ${{ secrets.CF_WORKER_URL }}
+          SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
+          RUN_TYPE: manual
+          TARGET_DATE: ${{ inputs.target_date }}
+        run: python scripts/sync_menu.py
