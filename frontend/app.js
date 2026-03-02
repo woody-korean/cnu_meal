@@ -46,7 +46,7 @@ let selectedStarsByMeal = new Map();
 
 refreshButton.addEventListener("click", () => {
   loadData().catch((error) => {
-    setStatus(`Failed to refresh: ${error.message}`, true);
+    setStatus(`새로고침에 실패했습니다: ${error.message}`, true);
   });
 });
 
@@ -54,7 +54,7 @@ if (dateInput) {
   dateInput.addEventListener("change", () => {
     uiState.selectedDate = dateInput.value || "";
     loadData().catch((error) => {
-      setStatus(`Failed to load date: ${error.message}`, true);
+      setStatus(`선택한 날짜를 불러오지 못했습니다: ${error.message}`, true);
     });
   });
 }
@@ -64,7 +64,7 @@ if (todayButton) {
     uiState.selectedDate = "";
     if (dateInput) dateInput.value = "";
     loadData().catch((error) => {
-      setStatus(`Failed to load today: ${error.message}`, true);
+      setStatus(`오늘 식단을 불러오지 못했습니다: ${error.message}`, true);
     });
   });
 }
@@ -98,16 +98,16 @@ if (englishToggle) {
 }
 
 loadData().catch((error) => {
-  setStatus(`Failed to load: ${error.message}`, true);
+  setStatus(`초기 데이터를 불러오지 못했습니다: ${error.message}`, true);
 });
 
 async function loadData() {
   if (!API_BASE_URL) {
-    setStatus("Set API_BASE_URL in frontend/config.js first.", true);
+    setStatus("frontend/config.js에서 API_BASE_URL을 먼저 설정해 주세요.", true);
     return;
   }
 
-  setStatus("Loading meals...", false);
+  setStatus("식단을 불러오는 중입니다...", false);
 
   const dateQuery = uiState.selectedDate ? `?date=${encodeURIComponent(uiState.selectedDate)}` : "";
 
@@ -143,12 +143,12 @@ function renderSummary(meals) {
   const visible = getVisibleMeals(meals);
   const operatingCount = visible.filter((meal) => meal.is_operating).length;
   const dateText = currentServiceDate || uiState.selectedDate || "-";
-  setStatus(`${dateText} · ${visible.length} meals shown · ${operatingCount} open`, false);
+  setStatus(`${dateText} · 식단 ${visible.length}개 · 운영 중 ${operatingCount}개`, false);
 }
 
 function renderLeaderboard(items) {
   if (!items.length) {
-    leaderboardRoot.innerHTML = '<p class="status">No ratings yet. Be the first to vote.</p>';
+    leaderboardRoot.innerHTML = '<p class="status">아직 평가가 없습니다. 첫 평가를 남겨 주세요.</p>';
     return;
   }
 
@@ -171,7 +171,7 @@ function renderLeaderboard(items) {
 
     const meta = document.createElement("div");
     meta.className = "rank-sub";
-    meta.textContent = `${item.vote_count} votes`;
+    meta.textContent = `${item.vote_count}표`;
 
     const score = document.createElement("div");
     score.className = "rank-score";
@@ -205,7 +205,7 @@ function renderMeals(meals) {
   const jumpItems = [];
 
   if (!visibleMeals.length) {
-    mealRoot.innerHTML = '<p class="status">No meals found for current filters.</p>';
+    mealRoot.innerHTML = '<p class="status">현재 필터에 맞는 식단이 없습니다.</p>';
     renderMobileJump(jumpItems);
     return;
   }
@@ -262,7 +262,7 @@ function renderMealCard(meal, ratedSet) {
   card.className = "meal-card";
   const alreadyRated = meal.is_operating ? ratedSet.has(meal.meal_id) : false;
   const ratingState = !meal.is_operating ? "closed" : alreadyRated ? "rated" : "unrated";
-  const stateLabel = ratingState === "closed" ? "평가마감" : ratingState === "rated" ? "평가완료" : "평가가능";
+  const stateLabel = ratingState === "closed" ? "평가 종료" : ratingState === "rated" ? "평가 완료" : "평가 가능";
   card.classList.add(`state-${ratingState}`);
 
   const top = document.createElement("div");
@@ -308,7 +308,7 @@ function renderMealCard(meal, ratedSet) {
     enWrap.className = "english-block";
 
     const summary = document.createElement("summary");
-    summary.textContent = "English menu (optional)";
+    summary.textContent = "영문 메뉴 보기";
 
     const enList = document.createElement("ul");
     enList.className = "menu-list menu-list-en";
@@ -329,35 +329,35 @@ function renderMealCard(meal, ratedSet) {
   if (!meal.is_operating) {
     const notice = document.createElement("div");
     notice.className = "not-operating";
-    notice.textContent = "운영 종료로 평가할 수 없습니다.";
+    notice.textContent = "운영이 종료된 메뉴라 평가할 수 없습니다.";
     card.appendChild(notice);
     return card;
   }
 
   const currentRating = document.createElement("div");
   currentRating.className = "rating-current";
-  currentRating.textContent = `현재 평점 ⭐${Number(meal.avg_stars || 0).toFixed(2)} (${meal.vote_count || 0}표)`;
+  currentRating.textContent = `현재 별점 ⭐${Number(meal.avg_stars || 0).toFixed(2)} (${meal.vote_count || 0}표)`;
 
   card.appendChild(currentRating);
 
   if (alreadyRated) {
     const ratedNote = document.createElement("div");
     ratedNote.className = "rated-note";
-    ratedNote.textContent = "오늘 평가를 이미 완료했습니다.";
+    ratedNote.textContent = "오늘은 이미 평가를 완료했어요.";
     card.appendChild(ratedNote);
     return card;
   }
 
   const rateLabel = document.createElement("div");
   rateLabel.className = "rate-label";
-  rateLabel.textContent = "내 평가";
+  rateLabel.textContent = "내 별점";
 
   const ratingRow = document.createElement("div");
   ratingRow.className = "rating-row";
 
   const helper = document.createElement("div");
   helper.className = "rate-helper";
-  helper.textContent = "별점을 선택한 뒤 제출하세요.";
+  helper.textContent = "별점을 고른 뒤 제출해 주세요.";
 
   const buttons = [];
   const selected = selectedStarsByMeal.get(meal.meal_id) || 0;
@@ -379,7 +379,7 @@ function renderMealCard(meal, ratedSet) {
         btn.classList.toggle("is-active", i + 1 <= star);
       });
       submitBtn.disabled = false;
-      helper.textContent = `${star}점 선택됨`;
+      helper.textContent = `${star}점을 선택했어요.`;
     });
 
     buttons.push(button);
@@ -390,7 +390,7 @@ function renderMealCard(meal, ratedSet) {
   submitBtn.type = "button";
   submitBtn.className = "submit-rating";
   submitBtn.disabled = selected < 1;
-  submitBtn.textContent = "평점 제출";
+  submitBtn.textContent = "별점 제출";
 
   submitBtn.addEventListener("click", async () => {
     const stars = selectedStarsByMeal.get(meal.meal_id);
@@ -405,7 +405,7 @@ function renderMealCard(meal, ratedSet) {
       });
 
       rememberRated(meal.meal_id, latestVoteDayKey);
-      setStatus("Rating submitted.", false);
+      setStatus("평가가 등록되었습니다.", false);
       await loadData();
     } catch (error) {
       submitBtn.disabled = false;
@@ -429,7 +429,7 @@ function renderMobileJump(items) {
 
   const label = document.createElement("div");
   label.className = "mobile-jump-label";
-  label.textContent = "식당 바로가기";
+  label.textContent = "식당 빠르게 이동";
 
   const list = document.createElement("div");
   list.className = "mobile-jump-list";

@@ -19,19 +19,19 @@
     <main class="container">
       <header class="hero">
         <p class="hero-kicker">CNU Meal Rating</p>
-        <h1>오늘의 학식 평점</h1>
-        <p class="hero-sub">한국어 중심으로 보고, 필요할 때만 English를 함께 확인하세요.</p>
+        <h1>오늘의 학식 별점</h1>
+        <p class="hero-sub">기본은 한국어로 보여드리고, 필요할 때만 영어 메뉴를 함께 표시합니다.</p>
         <div class="meta-grid">
           <div class="meta-card">
             <span class="meta-label">제공일</span>
             <strong id="service-date">-</strong>
           </div>
           <div class="meta-card">
-            <span class="meta-label">투표 키</span>
+            <span class="meta-label">투표 기준일</span>
             <strong id="vote-day-key">-</strong>
           </div>
           <div class="meta-card">
-            <span class="meta-label">마지막 동기화</span>
+            <span class="meta-label">마지막 업데이트</span>
             <strong id="generated-at">-</strong>
           </div>
         </div>
@@ -39,7 +39,7 @@
 
       <section class="panel">
         <div class="section-head">
-          <h2>오늘의 상위 평점</h2>
+          <h2>오늘의 인기 메뉴</h2>
           <button id="refresh-button" class="btn-secondary" type="button">새로고침</button>
         </div>
         <div id="leaderboard" class="leaderboard"></div>
@@ -55,7 +55,7 @@
             <input id="filter-date" type="date" />
           </label>
           <label class="toolbar-field toolbar-period">
-            <span>식사</span>
+            <span>식사 시간</span>
             <select id="filter-period">
               <option value="all">전체</option>
               <option value="조식">조식</option>
@@ -64,7 +64,7 @@
             </select>
           </label>
           <label class="toolbar-field toolbar-audience">
-            <span>대상</span>
+            <span>이용 대상</span>
             <select id="filter-audience">
               <option value="all">전체</option>
               <option value="학생">학생</option>
@@ -74,10 +74,10 @@
           <label class="toolbar-field toolbar-sort">
             <span>정렬</span>
             <select id="sort-mode">
-              <option value="recommended">추천순</option>
-              <option value="rating">평점순</option>
-              <option value="price_asc">가격 낮은순</option>
-              <option value="price_desc">가격 높은순</option>
+              <option value="recommended">추천 순</option>
+              <option value="rating">평점 순</option>
+              <option value="price_asc">가격 낮은 순</option>
+              <option value="price_desc">가격 높은 순</option>
             </select>
           </label>
           <label class="toolbar-toggle toolbar-english" for="toggle-english">
@@ -86,7 +86,7 @@
             <span class="toggle-text">English</span>
           </label>
           <button id="today-button" class="btn-secondary btn-today" type="button">오늘</button>
-          <nav id="mobile-cafeteria-jump" class="mobile-jump" aria-label="식당 바로가기"></nav>
+          <nav id="mobile-cafeteria-jump" class="mobile-jump" aria-label="식당 빠르게 이동"></nav>
         </div>
         <p id="status" class="status"></p>
         <div id="meals-root" class="meals-root"></div>
