@@ -61,13 +61,15 @@ function renderLeaderboard(items) {
   leaderboardRoot.innerHTML = "";
 
   items.forEach((item, index) => {
+    const koTitle = formatMenuDisplay(item.menu_name_ko);
+    const enTitle = formatMenuDisplay(item.menu_name_en);
     const wrapper = document.createElement("article");
     wrapper.className = "leader-item";
     wrapper.innerHTML = `
       <div class="rank-badge">${index + 1}</div>
       <div>
-        <div class="rank-title">${escapeHtml(item.menu_name_ko)}</div>
-        <div class="rank-sub">${escapeHtml(item.menu_name_en)} · ${escapeHtml(item.cafeteria_name_ko)} (${escapeHtml(item.meal_period)} ${escapeHtml(item.audience)})</div>
+        <div class="rank-title">${escapeHtml(koTitle)}</div>
+        <div class="rank-sub">${escapeHtml(enTitle)} · ${escapeHtml(item.cafeteria_name_ko)} (${escapeHtml(item.meal_period)} ${escapeHtml(item.audience)})</div>
       </div>
       <div class="rank-score">⭐ ${Number(item.weighted_score).toFixed(2)}<br/><span class="rank-sub">${item.vote_count} votes</span></div>
     `;
@@ -121,17 +123,26 @@ function renderMealCard(meal, ratedSet) {
 
   const koName = document.createElement("div");
   koName.className = "meal-name-ko";
-  koName.textContent = meal.menu_name_ko;
+  koName.textContent = formatMenuDisplay(meal.menu_name_ko);
 
   const enName = document.createElement("div");
   enName.className = "meal-name-en";
-  enName.textContent = meal.menu_name_en;
+  enName.textContent = formatMenuDisplay(meal.menu_name_en);
+
+  const price = formatPriceKrw(meal.price_krw);
+  const priceEl = document.createElement("div");
+  priceEl.className = "meal-price";
+  priceEl.textContent = price;
 
   const meta = document.createElement("div");
   meta.className = "rating-meta";
   meta.textContent = `Avg ${Number(meal.avg_stars || 0).toFixed(2)} · ${meal.vote_count || 0} votes`;
 
-  card.append(tag, koName, enName, meta);
+  card.append(tag, koName, enName);
+  if (price) {
+    card.appendChild(priceEl);
+  }
+  card.appendChild(meta);
 
   if (!meal.is_operating) {
     const notice = document.createElement("div");
@@ -283,6 +294,18 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ko-KR", { hour12: false });
+}
+
+function formatMenuDisplay(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.replace(/^\s*(정식|세트|set)\s*\(\s*\d{3,6}\s*\)\s*\|?\s*/i, "").trim();
+}
+
+function formatPriceKrw(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  return `₩${amount.toLocaleString("ko-KR")}`;
 }
 
 function escapeHtml(value) {

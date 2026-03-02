@@ -234,6 +234,12 @@ h1 {
   font-size: 0.88rem;
 }
 
+.meal-price {
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 .rating-meta {
   color: #0f172a;
   font-size: 0.83rem;
