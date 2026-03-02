@@ -20,12 +20,7 @@ export function getKstCalendarDate(now: Date = new Date()): string {
 }
 
 export function getVoteDayKey(now: Date = new Date()): string {
-  const kst = toKstDate(now);
-  if (kst.getUTCHours() >= 4) {
-    return formatYmd(kst);
-  }
-  const prevDay = new Date(kst.getTime() - 24 * 60 * 60 * 1000);
-  return formatYmd(prevDay);
+  return formatYmd(toKstDate(now));
 }
 
 export function isValidYmd(value: string): boolean {

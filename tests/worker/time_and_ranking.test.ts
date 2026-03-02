@@ -5,14 +5,14 @@ import { getVoteDayKey } from "../../worker/src/time";
 import { normalizeEnglish, parseStars } from "../../worker/src/validation";
 
 describe("vote day key", () => {
-  it("keeps previous day before 04:00 KST", () => {
-    const at0259Kst = new Date("2026-03-02T17:59:00.000Z"); // 2026-03-03 02:59 KST
-    expect(getVoteDayKey(at0259Kst)).toBe("2026-03-02");
+  it("uses calendar day in KST before midnight boundary", () => {
+    const at2359Kst = new Date("2026-03-02T14:59:00.000Z"); // 2026-03-02 23:59 KST
+    expect(getVoteDayKey(at2359Kst)).toBe("2026-03-02");
   });
 
-  it("switches at 04:00 KST", () => {
-    const at0400Kst = new Date("2026-03-02T19:00:00.000Z"); // 2026-03-03 04:00 KST
-    expect(getVoteDayKey(at0400Kst)).toBe("2026-03-03");
+  it("switches exactly at 00:00 KST", () => {
+    const at0000Kst = new Date("2026-03-02T15:00:00.000Z"); // 2026-03-03 00:00 KST
+    expect(getVoteDayKey(at0000Kst)).toBe("2026-03-03");
   });
 });
 
