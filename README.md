@@ -98,7 +98,8 @@ python scripts/sync_menu.py --date 2026-03-03 --run-type manual
 When creating the Worker project from the Cloudflare UI with connected GitHub repo, use these exact values:
 
 - Project name: `cnu_meal`
-- Build command:
+- Production branch: `main`
+- Build command: leave blank (Cloudflare already installs dependencies automatically). If you must set one, use:
 
 ```bash
 npm ci
@@ -114,7 +115,7 @@ sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$CF_D1_DATABASE_ID/" worker/wrangler.toml 
 - Non-production branch deploy command:
 
 ```bash
-npx wrangler versions upload --config worker/wrangler.toml
+sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$CF_D1_DATABASE_ID/" worker/wrangler.toml && npx wrangler versions upload --config worker/wrangler.toml
 ```
 
 - Path: `/`
