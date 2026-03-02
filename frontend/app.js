@@ -16,6 +16,7 @@ const periodFilter = document.getElementById("filter-period");
 const audienceFilter = document.getElementById("filter-audience");
 const sortMode = document.getElementById("sort-mode");
 const englishToggle = document.getElementById("toggle-english");
+const mobileJumpRoot = document.getElementById("mobile-cafeteria-jump");
 
 const ALLERGEN_RULES = [
   { label: "난류", keywords: ["계란", "달걀", "egg"] },
@@ -184,7 +185,7 @@ function renderLeaderboard(items) {
     body.className = "rank-body";
     body.append(title, info);
 
-    if (uiState.showEnglish) {
+    if (uiState.showEnglish && hasMeaningfulEnglish(item.menu_name_en, item.menu_name_ko)) {
       const en = document.createElement("div");
       en.className = "rank-sub rank-en";
       en.textContent = enDishes[0] || formatMenuDisplay(item.menu_name_en);
@@ -201,9 +202,11 @@ function renderLeaderboard(items) {
 
 function renderMeals(meals) {
   const visibleMeals = getVisibleMeals(meals);
+  const jumpItems = [];
 
   if (!visibleMeals.length) {
     mealRoot.innerHTML = '<p class="status">No meals found for current filters.</p>';
+    renderMobileJump(jumpItems);
     return;
   }
 
@@ -212,10 +215,11 @@ function renderMeals(meals) {
 
   mealRoot.innerHTML = "";
 
-  Object.values(grouped).forEach((groupMeals) => {
+  Object.values(grouped).forEach((groupMeals, index) => {
     const first = groupMeals[0];
     const block = document.createElement("section");
     block.className = "cafeteria-block";
+    block.id = buildCafeteriaSectionId(first, index);
 
     const head = document.createElement("header");
     head.className = "cafeteria-head";
@@ -224,11 +228,13 @@ function renderMeals(meals) {
     ko.className = "cafe-ko";
     ko.textContent = first.cafeteria_name_ko;
 
-    const en = document.createElement("div");
-    en.className = "cafe-en";
-    en.textContent = first.cafeteria_name_en;
-
-    head.append(ko, en);
+    head.appendChild(ko);
+    if (uiState.showEnglish && hasMeaningfulEnglish(first.cafeteria_name_en, first.cafeteria_name_ko)) {
+      const en = document.createElement("div");
+      en.className = "cafe-en";
+      en.textContent = first.cafeteria_name_en;
+      head.appendChild(en);
+    }
 
     const grid = document.createElement("div");
     grid.className = "meal-grid";
@@ -240,12 +246,24 @@ function renderMeals(meals) {
 
     block.append(head, grid);
     mealRoot.appendChild(block);
+
+    jumpItems.push({
+      sectionId: block.id,
+      koName: first.cafeteria_name_ko,
+      enName: first.cafeteria_name_en
+    });
   });
+
+  renderMobileJump(jumpItems);
 }
 
 function renderMealCard(meal, ratedSet) {
   const card = document.createElement("article");
   card.className = "meal-card";
+  const alreadyRated = meal.is_operating ? ratedSet.has(meal.meal_id) : false;
+  const ratingState = !meal.is_operating ? "closed" : alreadyRated ? "rated" : "unrated";
+  const stateLabel = ratingState === "closed" ? "평가마감" : ratingState === "rated" ? "평가완료" : "평가가능";
+  card.classList.add(`state-${ratingState}`);
 
   const top = document.createElement("div");
   top.className = "primary-line";
@@ -255,7 +273,8 @@ function renderMealCard(meal, ratedSet) {
 
   chips.append(
     chip(meal.meal_period, `chip period-${periodClass(meal.meal_period)}`),
-    chip(meal.audience, `chip audience-${audienceClass(meal.audience)}`)
+    chip(meal.audience, `chip audience-${audienceClass(meal.audience)}`),
+    chip(stateLabel, `chip state-${ratingState}`)
   );
 
   const price = document.createElement("div");
@@ -284,12 +303,12 @@ function renderMealCard(meal, ratedSet) {
 
   card.append(top, menuList);
 
-  if (uiState.showEnglish && enDishes.length) {
+  if (uiState.showEnglish && hasMeaningfulEnglishMenu(meal.menu_name_en, meal.menu_name_ko, enDishes, koDishes)) {
     const enWrap = document.createElement("details");
     enWrap.className = "english-block";
 
     const summary = document.createElement("summary");
-    summary.textContent = "English menu";
+    summary.textContent = "English menu (optional)";
 
     const enList = document.createElement("ul");
     enList.className = "menu-list menu-list-en";
@@ -310,12 +329,11 @@ function renderMealCard(meal, ratedSet) {
   if (!meal.is_operating) {
     const notice = document.createElement("div");
     notice.className = "not-operating";
-    notice.textContent = "운영안함";
+    notice.textContent = "운영 종료로 평가할 수 없습니다.";
     card.appendChild(notice);
     return card;
   }
 
-  const alreadyRated = ratedSet.has(meal.meal_id);
   const currentRating = document.createElement("div");
   currentRating.className = "rating-current";
   currentRating.textContent = `현재 평점 ⭐${Number(meal.avg_stars || 0).toFixed(2)} (${meal.vote_count || 0}표)`;
@@ -325,7 +343,7 @@ function renderMealCard(meal, ratedSet) {
   if (alreadyRated) {
     const ratedNote = document.createElement("div");
     ratedNote.className = "rated-note";
-    ratedNote.textContent = "오늘 이미 평가를 완료했습니다.";
+    ratedNote.textContent = "오늘 평가를 이미 완료했습니다.";
     card.appendChild(ratedNote);
     return card;
   }
@@ -397,6 +415,50 @@ function renderMealCard(meal, ratedSet) {
 
   card.append(rateLabel, ratingRow, helper, submitBtn);
   return card;
+}
+
+function renderMobileJump(items) {
+  if (!mobileJumpRoot) return;
+
+  if (!items.length) {
+    mobileJumpRoot.innerHTML = "";
+    return;
+  }
+
+  mobileJumpRoot.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "mobile-jump-label";
+  label.textContent = "식당 바로가기";
+
+  const list = document.createElement("div");
+  list.className = "mobile-jump-list";
+
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mobile-jump-btn";
+
+    const ko = document.createElement("span");
+    ko.className = "jump-ko";
+    ko.textContent = item.koName || "-";
+    button.appendChild(ko);
+
+    if (uiState.showEnglish && hasMeaningfulEnglish(item.enName, item.koName)) {
+      const en = document.createElement("span");
+      en.className = "jump-en";
+      en.textContent = item.enName;
+      button.appendChild(en);
+    }
+
+    button.addEventListener("click", () => {
+      document.getElementById(item.sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    list.appendChild(button);
+  });
+
+  mobileJumpRoot.append(label, list);
 }
 
 function getVisibleMeals(meals) {
@@ -474,6 +536,41 @@ function formatPriceKrw(value) {
   return `₩${amount.toLocaleString("ko-KR")}`;
 }
 
+function buildCafeteriaSectionId(meal, index) {
+  const seed = `${meal.cafeteria_code || "cafeteria"}-${meal.cafeteria_name_ko || ""}-${index}`;
+  const slug = String(seed)
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `cafeteria-${slug || index}`;
+}
+
+function hasMeaningfulEnglish(valueEn, valueKo) {
+  const en = normalizeText(stripMenuPrefix(valueEn || ""));
+  const ko = normalizeText(stripMenuPrefix(valueKo || ""));
+  if (!en) return false;
+  if (!/[a-z]/i.test(en)) return false;
+  if (en.toLowerCase() === "closed") return false;
+  if (ko && en.toLowerCase() === ko.toLowerCase()) return false;
+  return true;
+}
+
+function hasMeaningfulEnglishMenu(rawEn, rawKo, enDishes, koDishes) {
+  if (!hasMeaningfulEnglish(rawEn, rawKo)) return false;
+  if (!enDishes.length) return false;
+
+  const enText = normalizeText(enDishes.join(" / "));
+  const koText = normalizeText(koDishes.join(" / "));
+  if (koText && enText.toLowerCase() === koText.toLowerCase()) return false;
+  return true;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function detectAllergens(meal) {
   const text = `${meal.menu_name_ko || ""} ${meal.menu_name_en || ""}`.toLowerCase();
   const found = [];
@@ -538,7 +635,7 @@ function apiUrl(path) {
 
 function setStatus(message, isError) {
   statusEl.textContent = message;
-  statusEl.style.color = isError ? "#be123c" : "#334155";
+  statusEl.style.color = isError ? "var(--danger)" : "var(--ink-soft)";
 }
 
 function getOrCreateDeviceId() {
