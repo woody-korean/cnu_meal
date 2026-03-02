@@ -1,29 +1,29 @@
 :root {
-  --bg: #eef3f8;
-  --surface: #ffffff;
-  --surface-soft: #f5f8fc;
-  --surface-muted: #edf3f9;
-  --ink: #0f172a;
-  --ink-soft: #475569;
-  --ink-muted: #64748b;
-  --line: #d7e2ee;
-  --line-strong: #bfd1e5;
-  --brand: #0f766e;
-  --brand-soft: #d5f5f1;
-  --brand-ink: #0f5f58;
-  --accent: #0284c7;
-  --danger: #be123c;
-  --danger-soft: #ffe4e6;
-  --success: #0f766e;
-  --success-soft: #ccfbf1;
-  --warning: #b45309;
-  --warning-soft: #ffedd5;
-  --star: #f59e0b;
+  --bg: #f6f1e8;
+  --surface: #fffdf9;
+  --surface-soft: #f8f2e8;
+  --surface-muted: #efe7da;
+  --ink: #1f2430;
+  --ink-soft: #4b5563;
+  --ink-muted: #6b7280;
+  --line: #d9cec0;
+  --line-strong: #c7b7a3;
+  --brand: #1f6b5c;
+  --brand-soft: #d9ede7;
+  --brand-ink: #164f45;
+  --accent: #c16820;
+  --danger: #b33a3a;
+  --danger-soft: #fbe7e5;
+  --success: #1f6b5c;
+  --success-soft: #d8efe9;
+  --warning: #a16207;
+  --warning-soft: #fdf0d7;
+  --star: #d18c10;
   --s1: 8px;
   --s2: 16px;
   --s3: 24px;
   --s4: 32px;
-  --radius: 12px;
+  --radius: 0px;
   --sticky-top: 8px;
 }
 
@@ -36,8 +36,8 @@ body {
   min-height: 100vh;
   font-family: "Noto Sans KR", sans-serif;
   color: var(--ink);
-  background: radial-gradient(circle at top right, #dbeafe, transparent 44%),
-    radial-gradient(circle at top left, #d5f5f1, transparent 40%), var(--bg);
+  background: radial-gradient(circle at top right, #efd6b4, transparent 46%),
+    radial-gradient(circle at top left, #cfe3da, transparent 40%), var(--bg);
 }
 
 .bg-shape {
@@ -51,7 +51,7 @@ body {
 .bg-shape-a {
   width: 240px;
   height: 240px;
-  background: #22d3ee;
+  background: #d8a56a;
   left: -90px;
   top: 24px;
 }
@@ -59,7 +59,7 @@ body {
 .bg-shape-b {
   width: 300px;
   height: 300px;
-  background: #38bdf8;
+  background: #7bb39e;
   right: -110px;
   top: 220px;
 }
@@ -75,7 +75,7 @@ body {
 .panel {
   background: var(--surface);
   border-radius: var(--radius);
-  box-shadow: 0 10px 26px -22px #0f172a99;
+  box-shadow: 0 10px 26px -22px #2d241899;
 }
 
 .hero {
@@ -128,7 +128,7 @@ h2 {
 .meta-card {
   background: var(--surface-soft);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 6px 10px;
 }
 
@@ -180,7 +180,7 @@ h2 {
   padding: 8px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
   position: sticky;
   top: var(--sticky-top);
   z-index: 12;
@@ -197,7 +197,7 @@ h2 {
 .toolbar-field input,
 .toolbar-field select {
   height: 32px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: var(--surface);
   padding: 0 8px;
@@ -221,7 +221,7 @@ h2 {
   gap: 6px;
   min-height: 32px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--ink-muted);
   font-size: 12px;
@@ -275,7 +275,7 @@ h2 {
 }
 
 .toolbar-toggle:focus-within {
-  outline: 2px solid #99dff1;
+  outline: 2px solid #e2bc88;
   outline-offset: 1px;
 }
 
@@ -338,7 +338,7 @@ h2 {
   gap: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 8px 10px;
 }
 
@@ -401,7 +401,7 @@ h2 {
   border: 1px solid var(--line);
   border-left: 4px solid var(--brand);
   color: var(--ink);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 7px 10px;
 }
 
@@ -424,16 +424,16 @@ h2 {
 .meal-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 6px 16px -14px #0f172aaa;
+  border-radius: 0;
+  box-shadow: 0 6px 16px -14px #2d2418aa;
   padding: 12px;
   display: grid;
   gap: 8px;
 }
 
 .meal-card.state-rated {
-  border-color: #99f6e4;
-  background: #f0fdfa;
+  border-color: #9ec9bc;
+  background: #f4fbf8;
 }
 
 .meal-card.state-unrated {
@@ -441,8 +441,8 @@ h2 {
 }
 
 .meal-card.state-closed {
-  border-color: #fecdd3;
-  background: #fffafb;
+  border-color: #e7b6b0;
+  background: #fff6f5;
 }
 
 .primary-line {
@@ -472,43 +472,43 @@ h2 {
 }
 
 .period-breakfast {
-  background: #e0f2fe;
-  color: #075985;
+  background: #f8e7c9;
+  color: #8a4b08;
 }
 
 .period-lunch {
-  background: #dcfce7;
-  color: #166534;
+  background: #dcefdc;
+  color: #2f6b2f;
 }
 
 .period-dinner {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: #f3ddd1;
+  color: #8f3f1d;
 }
 
 .period-other {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--surface-muted);
+  color: var(--ink-soft);
 }
 
 .audience-student {
-  background: #cffafe;
-  color: #155e75;
+  background: #d8eee8;
+  color: #1f6b5c;
 }
 
 .audience-staff {
-  background: #fee2e2;
-  color: #9f1239;
+  background: #f8ddd5;
+  color: #8a3c2f;
 }
 
 .audience-other {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--surface-muted);
+  color: var(--ink-soft);
 }
 
 .state-unrated {
-  background: #e0f2fe;
-  color: #0c4a6e;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .state-rated {
@@ -552,7 +552,7 @@ h2 {
 .english-block {
   background: var(--surface-soft);
   border: 1px dashed var(--line-strong);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 6px 10px;
 }
 
@@ -567,7 +567,7 @@ h2 {
   font-size: 13px;
   color: var(--ink-soft);
   background: var(--surface-soft);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 6px 10px;
   font-weight: 700;
 }
@@ -588,8 +588,8 @@ h2 {
   background: var(--surface-muted);
   cursor: pointer;
   padding: 0;
-  color: #94a3b8;
-  border-radius: 6px;
+  color: #9c8d7a;
+  border-radius: 0;
   width: 32px;
   height: 32px;
   font-size: 22px;
@@ -598,7 +598,7 @@ h2 {
 
 .star-btn.is-active {
   color: var(--star);
-  background: #fffbeb;
+  background: var(--warning-soft);
 }
 
 .rate-helper {
@@ -627,7 +627,7 @@ h2 {
 .rated-note {
   background: var(--success-soft);
   color: var(--success);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 700;
@@ -636,7 +636,7 @@ h2 {
 .not-operating {
   background: var(--danger-soft);
   color: var(--danger);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 700;
