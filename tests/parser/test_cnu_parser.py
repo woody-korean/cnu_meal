@@ -15,6 +15,8 @@ def test_parse_target_date_column_and_rows() -> None:
     assert len(rows) == 4
     assert rows[0]["meal_period"] == "조식"
     assert rows[1]["audience"] == "학생"
+    assert rows[0]["has_weekly_operation"] is False
+    assert rows[1]["has_weekly_operation"] is True
 
     student_breakfast = rows[1]["entries"][0]
     assert student_breakfast.price_krw == 1000
@@ -33,7 +35,7 @@ def test_merge_language_rows_with_english_fallback() -> None:
         cafeteria_code="OCL03.03",
     )
 
-    assert len(merged) == 4
+    assert len(merged) == 3
 
     lunch_staff = [m for m in merged if m["meal_period"] == "중식" and m["audience"] == "직원"][0]
     assert lunch_staff["menu_name_en"] == lunch_staff["menu_name_ko"]
@@ -41,3 +43,23 @@ def test_merge_language_rows_with_english_fallback() -> None:
     breakfast_student = [m for m in merged if m["meal_period"] == "조식" and m["audience"] == "학생"][0]
     assert "Beef rice porridge" in breakfast_student["menu_name_en"]
     assert breakfast_student["meal_id"].startswith("meal_")
+    assert not [m for m in merged if m["meal_period"] == "조식" and m["audience"] == "직원"]
+
+
+def test_merge_matches_staff_student_by_key_not_row_order() -> None:
+    ko_rows = parse_cafeteria_day_entries(read_fixture("sample_ko.html"), "2026-03-03")
+    en_rows = parse_cafeteria_day_entries(read_fixture("sample_en.html"), "2026-03-03")
+
+    # Reverse EN row order to mimic source-order drift.
+    reversed_en = list(reversed(en_rows))
+
+    merged = merge_language_rows(
+        ko_rows=ko_rows,
+        en_rows=reversed_en,
+        target_date="2026-03-03",
+        cafeteria_code="OCL03.03",
+    )
+
+    lunch_staff = [m for m in merged if m["meal_period"] == "중식" and m["audience"] == "직원"][0]
+    assert lunch_staff["menu_name_ko"].startswith("정식(6000)")
+    assert lunch_staff["menu_name_en"] == lunch_staff["menu_name_ko"]

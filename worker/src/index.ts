@@ -337,8 +337,12 @@ async function handleAdminIngest(request: Request, env: Env): Promise<Response> 
     return errorResponse(request, env, 400, "no valid meals in payload");
   }
 
+  if (meals.some((meal) => meal.service_date !== targetDate)) {
+    return errorResponse(request, env, 400, "all meals.service_date must match target_date");
+  }
+
   try {
-    await upsertMeals(env.DB, meals);
+    await replaceMealsForDate(env.DB, targetDate, meals);
     await cleanupRetention(env.DB, targetDate, retentionMonths(env));
     await logSyncRun(env.DB, runType, targetDate, "ok", `ingested ${meals.length} meals`);
   } catch (error) {
@@ -352,6 +356,26 @@ async function handleAdminIngest(request: Request, env: Env): Promise<Response> 
     target_date: targetDate,
     ingested: meals.length
   });
+}
+
+async function replaceMealsForDate(db: D1Database, targetDate: string, meals: IngestMeal[]): Promise<void> {
+  await upsertMeals(db, meals);
+
+  const ids = [...new Set(meals.map((meal) => meal.meal_id))];
+  if (ids.length === 0) return;
+
+  const placeholders = ids.map((_, idx) => `?${idx + 2}`).join(", ");
+  const bindings: unknown[] = [targetDate, ...ids];
+
+  await db
+    .prepare(`DELETE FROM meals WHERE service_date = ?1 AND meal_id NOT IN (${placeholders})`)
+    .bind(...bindings)
+    .run();
+
+  await db
+    .prepare(`DELETE FROM ratings WHERE vote_day_key = ?1 AND meal_id NOT IN (${placeholders})`)
+    .bind(...bindings)
+    .run();
 }
 
 async function upsertMeals(db: D1Database, meals: IngestMeal[]): Promise<void> {

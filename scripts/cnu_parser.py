@@ -16,6 +16,31 @@ CAFETERIA_NAMES: dict[str, tuple[str, str]] = {
     "OCL03.05": ("생활과학대학", "College of Human Ecology"),
 }
 
+AUDIENCE_ALIASES: dict[str, str] = {
+    "직원": "직원",
+    "교직원": "직원",
+    "staff": "직원",
+    "faculty": "직원",
+    "employee": "직원",
+    "employees": "직원",
+    "worker": "직원",
+    "workers": "직원",
+    "학생": "학생",
+    "student": "학생",
+    "students": "학생",
+}
+
+MEAL_PERIOD_ALIASES: dict[str, str] = {
+    "조식": "조식",
+    "breakfast": "조식",
+    "중식": "중식",
+    "lunch": "중식",
+    "석식": "석식",
+    "dinner": "석식",
+}
+
+CLOSED_TOKENS = ("운영안함", "closed", "not operating", "미운영")
+
 
 @dataclass
 class ParsedMenuEntry:
@@ -30,6 +55,23 @@ def to_dot_date(value: str) -> str:
 
 def clean_text(value: str) -> str:
     return " ".join(value.replace("\xa0", " ").split())
+
+
+def normalize_audience(value: str) -> str:
+    text = clean_text(value)
+    return AUDIENCE_ALIASES.get(text.lower(), text)
+
+
+def normalize_meal_period(value: str) -> str:
+    text = clean_text(value)
+    return MEAL_PERIOD_ALIASES.get(text.lower(), text)
+
+
+def is_closed_text(value: str) -> bool:
+    normalized = clean_text(value).lower()
+    if not normalized:
+        return True
+    return any(token in normalized for token in CLOSED_TOKENS)
 
 
 def parse_price_krw(title: str) -> int | None:
@@ -51,10 +93,7 @@ def compose_menu_name(title: str, lines: list[str]) -> str:
 
 def parse_menu_cell(cell: Tag) -> list[ParsedMenuEntry]:
     raw_text = clean_text(cell.get_text(" ", strip=True))
-    if not raw_text:
-        return [ParsedMenuEntry(menu_name="운영안함", price_krw=None, is_operating=False)]
-
-    if "운영안함" in raw_text:
+    if is_closed_text(raw_text):
         return [ParsedMenuEntry(menu_name="운영안함", price_krw=None, is_operating=False)]
 
     entries: list[ParsedMenuEntry] = []
@@ -110,22 +149,25 @@ def parse_cafeteria_day_entries(html: str, target_date: str) -> list[dict[str, A
         is_period_row = bool(first.get("rowspan")) or "building" in (first.get("class") or [])
 
         if is_period_row and len(tds) >= 3:
-            current_period = clean_text(tds[0].get_text(" ", strip=True))
-            audience = clean_text(tds[1].get_text(" ", strip=True))
+            current_period = normalize_meal_period(tds[0].get_text(" ", strip=True))
+            audience = normalize_audience(tds[1].get_text(" ", strip=True))
             day_cells = tds[2:]
         else:
-            audience = clean_text(tds[0].get_text(" ", strip=True))
+            audience = normalize_audience(tds[0].get_text(" ", strip=True))
             day_cells = tds[1:]
 
         if date_column_index >= len(day_cells):
             continue
 
-        entries = parse_menu_cell(day_cells[date_column_index])
+        weekly_entries = [parse_menu_cell(cell) for cell in day_cells]
+        entries = weekly_entries[date_column_index]
+        has_weekly_operation = any(any(entry.is_operating for entry in cell_entries) for cell_entries in weekly_entries)
         rows.append(
             {
                 "meal_period": current_period,
                 "audience": audience,
                 "entries": entries,
+                "has_weekly_operation": has_weekly_operation,
             }
         )
 
@@ -134,7 +176,8 @@ def parse_cafeteria_day_entries(html: str, target_date: str) -> list[dict[str, A
 
 def sanitize_english(menu_en: str, menu_ko: str) -> str:
     candidate = clean_text(menu_en)
-    if not candidate or candidate.lower() == "null":
+    lowered = candidate.lower()
+    if not candidate or lowered == "null" or "null" in lowered or is_closed_text(candidate):
         return menu_ko
     return candidate
 
@@ -176,30 +219,69 @@ def merge_language_rows(
     cafeteria_name_ko, cafeteria_name_en = CAFETERIA_NAMES[cafeteria_code]
 
     merged: list[dict[str, Any]] = []
-    row_count = max(len(ko_rows), len(en_rows))
 
-    for row_idx in range(row_count):
-        ko_row = ko_rows[row_idx] if row_idx < len(ko_rows) else {"meal_period": "", "audience": "", "entries": []}
-        en_row = en_rows[row_idx] if row_idx < len(en_rows) else {"entries": []}
+    def row_key(row: dict[str, Any]) -> tuple[str, str]:
+        meal_period = normalize_meal_period(str(row.get("meal_period", "")))
+        audience = normalize_audience(str(row.get("audience", "")))
+        return (meal_period, audience)
+
+    ko_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    en_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    ordered_keys: list[tuple[str, str]] = []
+
+    for row in ko_rows:
+        key = row_key(row)
+        if key not in ko_by_key:
+            ordered_keys.append(key)
+        ko_by_key[key] = row
+
+    for row in en_rows:
+        key = row_key(row)
+        if key not in en_by_key:
+            if key not in ko_by_key:
+                ordered_keys.append(key)
+        en_by_key[key] = row
+
+    for key in ordered_keys:
+        ko_row = ko_by_key.get(key, {})
+        en_row = en_by_key.get(key, {})
+
+        meal_period = key[0]
+        audience = key[1]
 
         ko_entries: list[ParsedMenuEntry] = ko_row.get("entries", [])
         en_entries: list[ParsedMenuEntry] = en_row.get("entries", [])
 
+        has_weekly_operation = bool(ko_row.get("has_weekly_operation", False))
+        if not ko_row:
+            has_weekly_operation = any(entry.is_operating for entry in en_entries)
+
+        # Drop rows that are closed for all days in the source weekly table.
+        if not has_weekly_operation:
+            continue
+
         entry_count = max(len(ko_entries), len(en_entries))
         for entry_idx in range(entry_count):
-            ko_entry = ko_entries[entry_idx] if entry_idx < len(ko_entries) else ParsedMenuEntry("운영안함", None, False)
+            if entry_idx < len(ko_entries):
+                ko_entry = ko_entries[entry_idx]
+            elif entry_idx < len(en_entries):
+                fallback = en_entries[entry_idx]
+                ko_entry = ParsedMenuEntry(fallback.menu_name, fallback.price_krw, fallback.is_operating)
+            else:
+                ko_entry = ParsedMenuEntry("운영안함", None, False)
+
             en_entry = en_entries[entry_idx] if entry_idx < len(en_entries) else ParsedMenuEntry("", None, ko_entry.is_operating)
 
             menu_ko = clean_text(ko_entry.menu_name)
             menu_en = sanitize_english(en_entry.menu_name, menu_ko)
-            is_operating = bool(ko_entry.is_operating)
+            is_operating = bool(ko_entry.is_operating or en_entry.is_operating)
             price_krw = ko_entry.price_krw if ko_entry.price_krw is not None else en_entry.price_krw
 
             meal_id = compute_meal_id(
                 service_date=target_date,
                 cafeteria_code=cafeteria_code,
-                meal_period=ko_row.get("meal_period", ""),
-                audience=ko_row.get("audience", ""),
+                meal_period=meal_period,
+                audience=audience,
                 menu_name_ko=menu_ko,
                 price_krw=price_krw,
             )
@@ -211,8 +293,8 @@ def merge_language_rows(
                     "cafeteria_code": cafeteria_code,
                     "cafeteria_name_ko": cafeteria_name_ko,
                     "cafeteria_name_en": cafeteria_name_en,
-                    "meal_period": ko_row.get("meal_period", ""),
-                    "audience": ko_row.get("audience", ""),
+                    "meal_period": meal_period,
+                    "audience": audience,
                     "menu_name_ko": menu_ko,
                     "menu_name_en": menu_en,
                     "price_krw": price_krw,
