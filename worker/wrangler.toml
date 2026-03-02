@@ -1,0 +1,14 @@
+name = "cnu-meal-api"
+main = "src/index.ts"
+compatibility_date = "2026-03-02"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGIN = "*"
+RETENTION_MONTHS = "12"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cnu-meal"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"

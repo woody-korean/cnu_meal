@@ -1,0 +1,19 @@
+{
+  "name": "cnu-meal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:worker": "vitest run tests/worker",
+    "test": "npm run test:worker",
+    "typecheck": "tsc --noEmit",
+    "worker:dev": "wrangler dev --config worker/wrangler.toml",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260213.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.114.0"
+  }
+}
