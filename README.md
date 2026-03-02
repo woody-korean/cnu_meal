@@ -93,6 +93,43 @@ SYNC_ADMIN_TOKEN="<token>" \
 python scripts/sync_menu.py --date 2026-03-03 --run-type manual
 ```
 
+## Cloudflare Dashboard Setup (GitHub Integration)
+
+When creating the Worker project from the Cloudflare UI with connected GitHub repo, use these exact values:
+
+- Project name: `cnu_meal`
+- Build command:
+
+```bash
+npm ci
+```
+
+- Deploy command:
+
+```bash
+sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$CF_D1_DATABASE_ID/" worker/wrangler.toml && npx wrangler d1 migrations apply DB --remote --config worker/wrangler.toml && npx wrangler deploy --config worker/wrangler.toml
+```
+
+- Builds for non-production branches: enabled
+- Non-production branch deploy command:
+
+```bash
+npx wrangler versions upload --config worker/wrangler.toml
+```
+
+- Path: `/`
+- API token: `Create new token`
+
+Cloudflare build variables:
+
+- `CF_D1_DATABASE_ID`: your D1 Database UUID (from D1 dashboard)
+
+After first deploy, add Worker encrypted secrets:
+
+- `SYNC_ADMIN_TOKEN`
+- `DEVICE_SALT`
+- `IP_SALT`
+
 ## Tests
 
 Worker logic tests:
@@ -121,4 +158,3 @@ Set these repository secrets:
 
 - Daily sync: `20:30 UTC` (05:30 KST)
 - Manual sync: `workflow_dispatch` with optional `target_date`
-
