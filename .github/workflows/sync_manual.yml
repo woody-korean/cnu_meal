@@ -30,4 +30,4 @@ jobs:
           SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
           RUN_TYPE: manual
           TARGET_DATE: ${{ inputs.target_date }}
-        run: python scripts/sync_menu.py
+        run: python -m scripts.sync_menu

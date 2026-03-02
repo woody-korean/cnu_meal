@@ -26,4 +26,4 @@ jobs:
           WORKER_URL: ${{ secrets.CF_WORKER_URL }}
           SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
           RUN_TYPE: scheduled
-        run: python scripts/sync_menu.py
+        run: python -m scripts.sync_menu
