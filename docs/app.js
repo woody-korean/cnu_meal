@@ -10,17 +10,91 @@ const serviceDateEl = document.getElementById("service-date");
 const voteDayKeyEl = document.getElementById("vote-day-key");
 const generatedAtEl = document.getElementById("generated-at");
 
-let latestVoteDayKey = "";
-let currentMeals = [];
-let selectedStarsByMeal = new Map();
+const dateInput = document.getElementById("filter-date");
+const todayButton = document.getElementById("today-button");
+const periodFilter = document.getElementById("filter-period");
+const audienceFilter = document.getElementById("filter-audience");
+const sortMode = document.getElementById("sort-mode");
+const englishToggle = document.getElementById("toggle-english");
+
+const ALLERGEN_RULES = [
+  { label: "난류", keywords: ["계란", "달걀", "egg"] },
+  { label: "우유", keywords: ["우유", "치즈", "요거트", "milk", "cheese", "yogurt"] },
+  { label: "밀", keywords: ["밀", "빵", "면", "국수", "우동", "파스타", "dumpling", "noodle", "bread", "wheat"] },
+  { label: "대두", keywords: ["콩", "두부", "soy", "tofu"] },
+  { label: "견과", keywords: ["견과", "땅콩", "호두", "nut", "peanut", "walnut", "almond"] },
+  { label: "어류", keywords: ["생선", "고등어", "fish", "mackerel", "salmon", "tuna"] },
+  { label: "갑각류", keywords: ["새우", "게", "shrimp", "crab", "lobster"] }
+];
 
 const deviceId = getOrCreateDeviceId();
+
+const uiState = {
+  selectedDate: "",
+  period: "all",
+  audience: "all",
+  sort: "recommended",
+  showEnglish: false
+};
+
+let latestVoteDayKey = "";
+let currentServiceDate = "";
+let currentMeals = [];
+let currentLeaderboard = [];
+let selectedStarsByMeal = new Map();
 
 refreshButton.addEventListener("click", () => {
   loadData().catch((error) => {
     setStatus(`Failed to refresh: ${error.message}`, true);
   });
 });
+
+if (dateInput) {
+  dateInput.addEventListener("change", () => {
+    uiState.selectedDate = dateInput.value || "";
+    loadData().catch((error) => {
+      setStatus(`Failed to load date: ${error.message}`, true);
+    });
+  });
+}
+
+if (todayButton) {
+  todayButton.addEventListener("click", () => {
+    uiState.selectedDate = "";
+    if (dateInput) dateInput.value = "";
+    loadData().catch((error) => {
+      setStatus(`Failed to load today: ${error.message}`, true);
+    });
+  });
+}
+
+if (periodFilter) {
+  periodFilter.addEventListener("change", () => {
+    uiState.period = periodFilter.value;
+    renderAll();
+  });
+}
+
+if (audienceFilter) {
+  audienceFilter.addEventListener("change", () => {
+    uiState.audience = audienceFilter.value;
+    renderAll();
+  });
+}
+
+if (sortMode) {
+  sortMode.addEventListener("change", () => {
+    uiState.sort = sortMode.value;
+    renderAll();
+  });
+}
+
+if (englishToggle) {
+  englishToggle.addEventListener("change", () => {
+    uiState.showEnglish = englishToggle.checked;
+    renderAll();
+  });
+}
 
 loadData().catch((error) => {
   setStatus(`Failed to load: ${error.message}`, true);
@@ -34,22 +108,41 @@ async function loadData() {
 
   setStatus("Loading meals...", false);
 
+  const dateQuery = uiState.selectedDate ? `?date=${encodeURIComponent(uiState.selectedDate)}` : "";
+
   const [mealsData, leaderboardData] = await Promise.all([
-    fetchJson("/api/meals"),
-    fetchJson("/api/leaderboard?limit=15")
+    fetchJson(`/api/meals${dateQuery}`),
+    fetchJson(`/api/leaderboard${dateQuery ? `${dateQuery}&limit=15` : "?limit=15"}`)
   ]);
 
   currentMeals = mealsData.meals || [];
+  currentLeaderboard = leaderboardData.leaderboard || [];
   latestVoteDayKey = mealsData.vote_day_key;
+  currentServiceDate = mealsData.service_date || "";
+  selectedStarsByMeal = new Map();
 
   serviceDateEl.textContent = mealsData.service_date || "-";
   voteDayKeyEl.textContent = mealsData.vote_day_key || "-";
   generatedAtEl.textContent = formatDateTime(mealsData.generated_at);
 
-  renderLeaderboard(leaderboardData.leaderboard || []);
-  renderMeals(currentMeals);
+  if (dateInput && !uiState.selectedDate && mealsData.service_date) {
+    dateInput.value = mealsData.service_date;
+  }
 
-  setStatus(`Loaded ${currentMeals.length} meals.`, false);
+  renderAll();
+}
+
+function renderAll() {
+  renderLeaderboard(currentLeaderboard);
+  renderMeals(currentMeals);
+  renderSummary(currentMeals);
+}
+
+function renderSummary(meals) {
+  const visible = getVisibleMeals(meals);
+  const operatingCount = visible.filter((meal) => meal.is_operating).length;
+  const dateText = currentServiceDate || uiState.selectedDate || "-";
+  setStatus(`${dateText} · ${visible.length} meals shown · ${operatingCount} open`, false);
 }
 
 function renderLeaderboard(items) {
@@ -61,30 +154,61 @@ function renderLeaderboard(items) {
   leaderboardRoot.innerHTML = "";
 
   items.forEach((item, index) => {
-    const koTitle = formatMenuDisplay(item.menu_name_ko);
-    const enTitle = formatMenuDisplay(item.menu_name_en);
     const wrapper = document.createElement("article");
     wrapper.className = "leader-item";
-    wrapper.innerHTML = `
-      <div class="rank-badge">${index + 1}</div>
-      <div>
-        <div class="rank-title">${escapeHtml(koTitle)}</div>
-        <div class="rank-sub">${escapeHtml(enTitle)} · ${escapeHtml(item.cafeteria_name_ko)} (${escapeHtml(item.meal_period)} ${escapeHtml(item.audience)})</div>
-      </div>
-      <div class="rank-score">⭐ ${Number(item.weighted_score).toFixed(2)}<br/><span class="rank-sub">${item.vote_count} votes</span></div>
-    `;
+
+    const koDishes = parseDishList(item.menu_name_ko);
+    const enDishes = parseDishList(item.menu_name_en);
+
+    const title = document.createElement("div");
+    title.className = "rank-title";
+    title.textContent = koDishes[0] || formatMenuDisplay(item.menu_name_ko);
+
+    const info = document.createElement("div");
+    info.className = "rank-sub";
+    info.textContent = `${item.cafeteria_name_ko} · ${item.meal_period} ${item.audience}`;
+
+    const meta = document.createElement("div");
+    meta.className = "rank-sub";
+    meta.textContent = `${item.vote_count} votes`;
+
+    const score = document.createElement("div");
+    score.className = "rank-score";
+    score.textContent = `⭐ ${Number(item.weighted_score).toFixed(2)}`;
+
+    const rank = document.createElement("div");
+    rank.className = "rank-badge";
+    rank.textContent = String(index + 1);
+
+    const body = document.createElement("div");
+    body.className = "rank-body";
+    body.append(title, info);
+
+    if (uiState.showEnglish) {
+      const en = document.createElement("div");
+      en.className = "rank-sub rank-en";
+      en.textContent = enDishes[0] || formatMenuDisplay(item.menu_name_en);
+      body.appendChild(en);
+    }
+
+    const right = document.createElement("div");
+    right.append(score, meta);
+
+    wrapper.append(rank, body, right);
     leaderboardRoot.appendChild(wrapper);
   });
 }
 
 function renderMeals(meals) {
-  if (!meals.length) {
-    mealRoot.innerHTML = '<p class="status">No meals available for today.</p>';
+  const visibleMeals = getVisibleMeals(meals);
+
+  if (!visibleMeals.length) {
+    mealRoot.innerHTML = '<p class="status">No meals found for current filters.</p>';
     return;
   }
 
   const ratedSet = getRatedSet(latestVoteDayKey);
-  const grouped = groupBy(meals, (meal) => meal.cafeteria_code);
+  const grouped = groupBy(visibleMeals, (meal) => meal.cafeteria_code);
 
   mealRoot.innerHTML = "";
 
@@ -95,20 +219,26 @@ function renderMeals(meals) {
 
     const head = document.createElement("header");
     head.className = "cafeteria-head";
-    head.innerHTML = `
-      <div class="cafe-ko">${escapeHtml(first.cafeteria_name_ko)}</div>
-      <div class="cafe-en">${escapeHtml(first.cafeteria_name_en)}</div>
-    `;
+
+    const ko = document.createElement("div");
+    ko.className = "cafe-ko";
+    ko.textContent = first.cafeteria_name_ko;
+
+    const en = document.createElement("div");
+    en.className = "cafe-en";
+    en.textContent = first.cafeteria_name_en;
+
+    head.append(ko, en);
 
     const grid = document.createElement("div");
     grid.className = "meal-grid";
 
-    groupMeals.forEach((meal) => {
+    const sorted = sortMeals(groupMeals, uiState.sort);
+    sorted.forEach((meal) => {
       grid.appendChild(renderMealCard(meal, ratedSet));
     });
 
-    block.appendChild(head);
-    block.appendChild(grid);
+    block.append(head, grid);
     mealRoot.appendChild(block);
   });
 }
@@ -117,45 +247,99 @@ function renderMealCard(meal, ratedSet) {
   const card = document.createElement("article");
   card.className = "meal-card";
 
-  const tag = document.createElement("span");
-  tag.className = "meal-tag";
-  tag.textContent = `${meal.meal_period} · ${meal.audience}`;
+  const top = document.createElement("div");
+  top.className = "primary-line";
 
-  const koName = document.createElement("div");
-  koName.className = "meal-name-ko";
-  koName.textContent = formatMenuDisplay(meal.menu_name_ko);
+  const chips = document.createElement("div");
+  chips.className = "chip-row";
 
-  const enName = document.createElement("div");
-  enName.className = "meal-name-en";
-  enName.textContent = formatMenuDisplay(meal.menu_name_en);
+  chips.append(
+    chip(meal.meal_period, `chip period-${periodClass(meal.meal_period)}`),
+    chip(meal.audience, `chip audience-${audienceClass(meal.audience)}`)
+  );
 
-  const price = formatPriceKrw(meal.price_krw);
-  const priceEl = document.createElement("div");
-  priceEl.className = "meal-price";
-  priceEl.textContent = price;
+  const price = document.createElement("div");
+  price.className = "primary-price";
+  price.textContent = formatPriceKrw(meal.price_krw) || "₩-";
 
-  const meta = document.createElement("div");
-  meta.className = "rating-meta";
-  meta.textContent = `Avg ${Number(meal.avg_stars || 0).toFixed(2)} · ${meal.vote_count || 0} votes`;
+  top.append(chips, price);
 
-  card.append(tag, koName, enName);
-  if (price) {
-    card.appendChild(priceEl);
+  const koDishes = parseDishList(meal.menu_name_ko);
+  const enDishes = parseDishList(meal.menu_name_en);
+
+  const menuList = document.createElement("ul");
+  menuList.className = "menu-list";
+  koDishes.forEach((dish) => {
+    const li = document.createElement("li");
+    li.textContent = dish;
+    menuList.appendChild(li);
+  });
+
+  const allergenTags = detectAllergens(meal);
+  const allergenRow = document.createElement("div");
+  allergenRow.className = "allergen-row";
+  allergenTags.forEach((name) => {
+    allergenRow.appendChild(chip(name, "chip allergen"));
+  });
+
+  card.append(top, menuList);
+
+  if (uiState.showEnglish && enDishes.length) {
+    const enWrap = document.createElement("details");
+    enWrap.className = "english-block";
+
+    const summary = document.createElement("summary");
+    summary.textContent = "English menu";
+
+    const enList = document.createElement("ul");
+    enList.className = "menu-list menu-list-en";
+    enDishes.forEach((dish) => {
+      const li = document.createElement("li");
+      li.textContent = dish;
+      enList.appendChild(li);
+    });
+
+    enWrap.append(summary, enList);
+    card.appendChild(enWrap);
   }
-  card.appendChild(meta);
+
+  if (allergenTags.length) {
+    card.appendChild(allergenRow);
+  }
 
   if (!meal.is_operating) {
     const notice = document.createElement("div");
     notice.className = "not-operating";
-    notice.textContent = "운영안함 / Not operating";
+    notice.textContent = "운영안함";
     card.appendChild(notice);
     return card;
   }
 
   const alreadyRated = ratedSet.has(meal.meal_id);
+  const currentRating = document.createElement("div");
+  currentRating.className = "rating-current";
+  currentRating.textContent = `현재 평점 ⭐${Number(meal.avg_stars || 0).toFixed(2)} (${meal.vote_count || 0}표)`;
+
+  card.appendChild(currentRating);
+
+  if (alreadyRated) {
+    const ratedNote = document.createElement("div");
+    ratedNote.className = "rated-note";
+    ratedNote.textContent = "오늘 이미 평가를 완료했습니다.";
+    card.appendChild(ratedNote);
+    return card;
+  }
+
+  const rateLabel = document.createElement("div");
+  rateLabel.className = "rate-label";
+  rateLabel.textContent = "내 평가";
 
   const ratingRow = document.createElement("div");
   ratingRow.className = "rating-row";
+
+  const helper = document.createElement("div");
+  helper.className = "rate-helper";
+  helper.textContent = "별점을 선택한 뒤 제출하세요.";
 
   const buttons = [];
   const selected = selectedStarsByMeal.get(meal.meal_id) || 0;
@@ -165,7 +349,6 @@ function renderMealCard(meal, ratedSet) {
     button.type = "button";
     button.className = "star-btn";
     button.textContent = "★";
-    button.disabled = alreadyRated;
     button.dataset.star = String(star);
 
     if (star <= selected) {
@@ -178,6 +361,7 @@ function renderMealCard(meal, ratedSet) {
         btn.classList.toggle("is-active", i + 1 <= star);
       });
       submitBtn.disabled = false;
+      helper.textContent = `${star}점 선택됨`;
     });
 
     buttons.push(button);
@@ -187,8 +371,8 @@ function renderMealCard(meal, ratedSet) {
   const submitBtn = document.createElement("button");
   submitBtn.type = "button";
   submitBtn.className = "submit-rating";
-  submitBtn.disabled = alreadyRated || selected < 1;
-  submitBtn.textContent = alreadyRated ? "Rated" : "Submit";
+  submitBtn.disabled = selected < 1;
+  submitBtn.textContent = "평점 제출";
 
   submitBtn.addEventListener("click", async () => {
     const stars = selectedStarsByMeal.get(meal.meal_id);
@@ -211,8 +395,116 @@ function renderMealCard(meal, ratedSet) {
     }
   });
 
-  card.append(ratingRow, submitBtn);
+  card.append(rateLabel, ratingRow, helper, submitBtn);
   return card;
+}
+
+function getVisibleMeals(meals) {
+  return meals.filter((meal) => {
+    if (uiState.period !== "all" && meal.meal_period !== uiState.period) return false;
+    if (uiState.audience !== "all" && meal.audience !== uiState.audience) return false;
+    return true;
+  });
+}
+
+function sortMeals(meals, mode) {
+  const copy = [...meals];
+  copy.sort((a, b) => {
+    if (mode === "price_asc") {
+      return comparePrice(a.price_krw, b.price_krw);
+    }
+    if (mode === "price_desc") {
+      return comparePrice(b.price_krw, a.price_krw);
+    }
+    if (mode === "rating") {
+      if ((b.avg_stars || 0) !== (a.avg_stars || 0)) return (b.avg_stars || 0) - (a.avg_stars || 0);
+      return (b.vote_count || 0) - (a.vote_count || 0);
+    }
+
+    if ((b.weighted_score || 0) !== (a.weighted_score || 0)) return (b.weighted_score || 0) - (a.weighted_score || 0);
+    if ((b.vote_count || 0) !== (a.vote_count || 0)) return (b.vote_count || 0) - (a.vote_count || 0);
+    return comparePrice(a.price_krw, b.price_krw);
+  });
+  return copy;
+}
+
+function comparePrice(a, b) {
+  const ax = Number(a);
+  const bx = Number(b);
+  const aMissing = !Number.isFinite(ax) || ax <= 0;
+  const bMissing = !Number.isFinite(bx) || bx <= 0;
+  if (aMissing && bMissing) return 0;
+  if (aMissing) return 1;
+  if (bMissing) return -1;
+  return ax - bx;
+}
+
+function parseDishList(value) {
+  const source = String(value || "").trim();
+  if (!source || source === "운영안함") return [];
+
+  let text = stripMenuPrefix(source);
+  if (text.includes("|")) {
+    const parts = text
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    text = parts.length > 1 ? parts.slice(1).join(" / ") : parts[0] || "";
+  }
+
+  return text
+    .split("/")
+    .map((dish) => dish.trim())
+    .filter(Boolean);
+}
+
+function stripMenuPrefix(value) {
+  return String(value)
+    .replace(/^\s*(정식|세트|set)\s*\(\s*\d{3,6}\s*\)\s*\|?\s*/i, "")
+    .trim();
+}
+
+function formatMenuDisplay(value) {
+  return stripMenuPrefix(String(value || ""));
+}
+
+function formatPriceKrw(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  return `₩${amount.toLocaleString("ko-KR")}`;
+}
+
+function detectAllergens(meal) {
+  const text = `${meal.menu_name_ko || ""} ${meal.menu_name_en || ""}`.toLowerCase();
+  const found = [];
+
+  ALLERGEN_RULES.forEach((rule) => {
+    if (rule.keywords.some((keyword) => text.includes(String(keyword).toLowerCase()))) {
+      found.push(rule.label);
+    }
+  });
+
+  return found;
+}
+
+function periodClass(value) {
+  if (value === "조식") return "breakfast";
+  if (value === "중식") return "lunch";
+  if (value === "석식") return "dinner";
+  return "other";
+}
+
+function audienceClass(value) {
+  if (value === "학생") return "student";
+  if (value === "직원") return "staff";
+  return "other";
+}
+
+function chip(label, className) {
+  const span = document.createElement("span");
+  span.className = className;
+  span.textContent = label;
+  return span;
 }
 
 async function fetchJson(path) {
@@ -294,25 +586,4 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ko-KR", { hour12: false });
-}
-
-function formatMenuDisplay(value) {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  return text.replace(/^\s*(정식|세트|set)\s*\(\s*\d{3,6}\s*\)\s*\|?\s*/i, "").trim();
-}
-
-function formatPriceKrw(value) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) return "";
-  return `₩${amount.toLocaleString("ko-KR")}`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }

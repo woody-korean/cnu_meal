@@ -48,8 +48,45 @@
       <section class="panel">
         <div class="section-head">
           <h2>Today’s Meals</h2>
-          <p id="status" class="status"></p>
         </div>
+        <div class="toolbar" id="meal-toolbar">
+          <label class="toolbar-field">
+            <span>Date</span>
+            <input id="filter-date" type="date" />
+          </label>
+          <label class="toolbar-field">
+            <span>Meal</span>
+            <select id="filter-period">
+              <option value="all">All</option>
+              <option value="조식">조식</option>
+              <option value="중식">중식</option>
+              <option value="석식">석식</option>
+            </select>
+          </label>
+          <label class="toolbar-field">
+            <span>Audience</span>
+            <select id="filter-audience">
+              <option value="all">All</option>
+              <option value="학생">학생</option>
+              <option value="직원">직원</option>
+            </select>
+          </label>
+          <label class="toolbar-field">
+            <span>Sort</span>
+            <select id="sort-mode">
+              <option value="recommended">추천순</option>
+              <option value="rating">평점순</option>
+              <option value="price_asc">가격 낮은순</option>
+              <option value="price_desc">가격 높은순</option>
+            </select>
+          </label>
+          <label class="toolbar-toggle">
+            <input id="toggle-english" type="checkbox" />
+            <span>English</span>
+          </label>
+          <button id="today-button" class="btn-secondary" type="button">Today</button>
+        </div>
+        <p id="status" class="status"></p>
         <div id="meals-root" class="meals-root"></div>
       </section>
     </main>
