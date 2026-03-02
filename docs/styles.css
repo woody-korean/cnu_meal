@@ -652,6 +652,24 @@ h2 {
   font-weight: 700;
 }
 
+.site-footer {
+  border: 1px solid var(--line-strong);
+  background: var(--surface-muted);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.site-footer a {
+  color: var(--brand-ink);
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+
+.site-footer a:hover {
+  color: var(--accent);
+}
+
 @media (max-width: 759px) {
   h1 {
     font-size: 22px;
